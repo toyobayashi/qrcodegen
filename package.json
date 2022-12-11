@@ -24,6 +24,9 @@
   },
   "keywords": [],
   "author": "toyobayashi",
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT",
   "devDependencies": {
     "@tybys/ts-transform-module-specifier": "^0.0.2",
