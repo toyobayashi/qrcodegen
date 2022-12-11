@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>qrcodegen</title>
+</head>
+<body>
+  <script src="../dist/qrcodegen.js"></script>
+  <script>
+    qrcodegen.init().then((api) => {
+      console.log(api.encodeText('\1'))
+      console.log(api.encodeBinary(new Uint8Array([1])))
+    })
+  </script>
+</body>
+</html>
