@@ -87,6 +87,9 @@ module.exports = defineConfig({
         path: dist
       },
       minify: false,
+      define: {
+        __TSGO_ENV__: '"h5"'
+      },
       type: 'umd'
     },
     {
@@ -96,6 +99,9 @@ module.exports = defineConfig({
         path: dist
       },
       minify: true,
+      define: {
+        __TSGO_ENV__: '"h5"'
+      },
       type: 'umd'
     },
     {
@@ -104,7 +110,10 @@ module.exports = defineConfig({
         name: 'index',
         path: mpDist
       },
-      minify: true,
+      minify: false,
+      define: {
+        __TSGO_ENV__: '"weapp"'
+      },
       type: 'mp'
     },
     {
@@ -114,6 +123,9 @@ module.exports = defineConfig({
         path: dist
       },
       minify: false,
+      define: {
+        __TSGO_ENV__: '"any"'
+      },
       type: 'esm-bundler',
       resolveOnly: [/^(?!(tslib)).*?$/]
     }

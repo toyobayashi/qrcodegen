@@ -23,7 +23,7 @@
     "prepare": "npm run build"
   },
   "keywords": [],
-  "author": "toyoli",
+  "author": "toyobayashi",
   "license": "MIT",
   "devDependencies": {
     "@tybys/ts-transform-module-specifier": "^0.0.2",
@@ -44,7 +44,6 @@
     "typescript": "~4.8.3"
   },
   "dependencies": {
-    "@tybys/wasm-util": "^0.5.2",
-    "tslib": "^2.4.0"
+    "@tybys/wasm-util": "^0.5.3"
   }
 }

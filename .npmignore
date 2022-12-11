@@ -13,3 +13,6 @@ tsconfig*
 tsgo.config.js
 jest.config*
 /lib/esm-bundler
+CMakeLists.txt
+/script
+/build

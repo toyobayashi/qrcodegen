@@ -7,12 +7,8 @@
   <title>qrcodegen</title>
 </head>
 <body>
+  <canvas width="200" height="200" id="canvas"></canvas>
   <script src="../dist/qrcodegen.js"></script>
-  <script>
-    qrcodegen.init().then((api) => {
-      console.log(api.encodeText('\1'))
-      console.log(api.encodeBinary(new Uint8Array([1])))
-    })
-  </script>
+  <script src="./index.js"></script>
 </body>
 </html>

@@ -4,4 +4,16 @@
  * @packageDocumentation
  */
 
-export { init, Ecc, Api } from './init'
+export {
+  init,
+  Ecc,
+  Matrix,
+  drawCanvas
+} from './init'
+
+export type {
+  Api,
+  DrawOptions,
+  CanvasLike,
+  CanvasRenderingContext2DLike
+} from './init'

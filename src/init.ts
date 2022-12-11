@@ -1,6 +1,8 @@
 import { load } from '@tybys/wasm-util'
 import wasmBase64 from './base64'
 
+declare const __TSGO_ENV__: string
+
 const BUFFER_LEN_FOR_VERSION = (n: number): number => (Math.floor((((n) * 4 + 17) * ((n) * 4 + 17) + 7) / 8) + 1)
 
 interface Exports {
@@ -33,9 +35,12 @@ interface Exports {
 }
 
 /** @public */
+export type Matrix = Array<Array<0 | 1>>
+
+/** @public */
 export interface Api {
-  encodeText: (text: string, ecc?: Ecc) => Array<Array<0 | 1>>
-  encodeBinary: (binary: BufferSource, ecc?: Ecc) => Array<Array<0 | 1>>
+  encodeText: (text: string, ecc?: Ecc) => Matrix
+  encodeBinary: (binary: BufferSource, ecc?: Ecc) => Matrix
 }
 
 interface Instance {
@@ -43,6 +48,12 @@ interface Instance {
 }
 
 let wasmPromise: Promise<Api> | undefined
+
+const currentSrc = (
+  typeof document !== 'undefined' &&
+  document.currentScript &&
+  (document.currentScript as HTMLScriptElement).src
+) ?? ''
 
 /** @public */
 export function init (customWasm?: string | URL | BufferSource): Promise<Api> {
@@ -64,9 +75,23 @@ export function init (customWasm?: string | URL | BufferSource): Promise<Api> {
     return wasmPromise
   }
 
-  const wasmSource = typeof Buffer !== 'undefined'
-    ? Buffer.from(wasmBase64, 'base64')
-    : new URL('data:application/wasm;base64,' + wasmBase64)
+  let wasmSource: Uint8Array | URL | string
+  if (typeof __TSGO_ENV__ === 'undefined' || __TSGO_ENV__ === 'any') {
+    wasmSource = typeof Buffer !== 'undefined'
+      ? Buffer.from(wasmBase64, 'base64')
+      : new URL('data:application/wasm;base64,' + wasmBase64)
+  } else {
+    if (__TSGO_ENV__ === 'weapp') {
+      wasmSource = '/miniprogram_npm/@tybys/qrcodegen/qrcodegen.wasm'
+    } else {
+      if (currentSrc) {
+        const dirname = currentSrc.substring(0, currentSrc.lastIndexOf('/'))
+        wasmSource = dirname + '/qrcodegen.wasm'
+      } else {
+        wasmSource = './qrcodegen.wasm'
+      }
+    }
+  }
 
   wasmPromise = load(wasmSource).then(resolve, reject)
   return wasmPromise
@@ -87,9 +112,9 @@ function createApi (instance: Instance): Api {
   const free = function (pointer: number): void {
     instance.exports.free(pointer)
   }
-  const makeMatrix = function (qrcode: number): Array<Array<0 | 1>> {
+  const makeMatrix = function (qrcode: number): Matrix {
     const size = instance.exports.qrcodegen_getSize(qrcode)
-    const matrix: Array<Array<0 | 1>> = Array.from({ length: size }, () => Array(size))
+    const matrix: Matrix = Array.from({ length: size }, () => Array(size))
     for (let y = 0; y < size; ++y) {
       for (let x = 0; x < size; ++x) {
         matrix[y][x] = instance.exports.qrcodegen_getModule(qrcode, x, y)
@@ -97,7 +122,7 @@ function createApi (instance: Instance): Api {
     }
     return matrix
   }
-  const encodeText = function (text: string, ecc: Ecc = Ecc.LOW): Array<Array<0 | 1>> {
+  const encodeText = function (text: string, ecc: Ecc = Ecc.LOW): Matrix {
     const buffer = new TextEncoder().encode(text)
     const pointer = malloc(buffer.byteLength + 1)
     const memory = new Uint8Array(instance.exports.memory.buffer)
@@ -111,7 +136,7 @@ function createApi (instance: Instance): Api {
     )
     free(tempBuffer)
     free(pointer)
-    let matrix: Array<Array<0 | 1>>
+    let matrix: Matrix
     if (ok) {
       matrix = makeMatrix(qrcode)
       free(qrcode)
@@ -122,7 +147,7 @@ function createApi (instance: Instance): Api {
     return matrix
   }
 
-  const encodeBinary = function (binary: BufferSource, ecc: Ecc = Ecc.LOW): Array<Array<0 | 1>> {
+  const encodeBinary = function (binary: BufferSource, ecc: Ecc = Ecc.LOW): Matrix {
     const buffer = binary instanceof ArrayBuffer
       ? new Uint8Array(binary)
       : new Uint8Array(binary.buffer, binary.byteOffset, binary.byteLength)
@@ -138,7 +163,7 @@ function createApi (instance: Instance): Api {
       tempBuffer, buffer.byteLength, qrcode, ecc, 1, 40, -1, 1
     )
     free(tempBuffer)
-    let matrix: Array<Array<0 | 1>>
+    let matrix: Matrix
     if (ok) {
       matrix = makeMatrix(qrcode)
       free(qrcode)
@@ -152,5 +177,50 @@ function createApi (instance: Instance): Api {
   return {
     encodeText,
     encodeBinary
+  }
+}
+
+/** @public */
+export interface DrawOptions {
+  backgroundColor?: string
+  foregroundColor?: string
+  padding?: number
+}
+
+/** @public */
+export interface CanvasRenderingContext2DLike {
+  fillStyle: string
+  fillRect (x: number, y: number, w: number, h: number): void
+}
+
+/** @public */
+export interface CanvasLike {
+  width: number
+  height: number
+  getContext (contextId: '2d'): CanvasRenderingContext2DLike
+}
+
+/** @public */
+export function drawCanvas (canvas: CanvasLike, matrix: Matrix, options?: DrawOptions): void {
+  const size = matrix.length
+  const canvasWidth = canvas.width
+  const canvasHeight = canvas.height ?? canvasWidth
+  const ctx = canvas.getContext('2d')
+  options = options ?? {}
+  const padding = options.padding ?? 0
+  ctx.fillStyle = options.backgroundColor ?? '#ffffff'
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+
+  const deltaWidth = ((canvasWidth - 2 * padding) / size)
+  const deltaHeight = ((canvasHeight - 2 * padding) / size)
+
+  for (let y = 0; y < size; ++y) {
+    for (let x = 0; x < size; ++x) {
+      const isDark = matrix[y][x]
+      if (isDark) {
+        ctx.fillStyle = options.foregroundColor ?? '#000000'
+        ctx.fillRect(padding + x * deltaWidth, padding + y * deltaHeight, deltaWidth, deltaHeight)
+      }
+    }
   }
 }
