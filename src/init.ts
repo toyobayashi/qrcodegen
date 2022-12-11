@@ -1,5 +1,6 @@
 import { load } from '@tybys/wasm-util'
 import wasmBase64 from './base64'
+import { Scope } from './scope'
 
 declare const __TSGO_ENV__: string
 
@@ -43,7 +44,7 @@ export interface Api {
   encodeBinary: (binary: BufferSource, ecc?: Ecc) => Matrix
 }
 
-interface Instance {
+export interface Instance {
   exports: Exports
 }
 
@@ -106,12 +107,6 @@ export enum Ecc {
 }
 
 function createApi (instance: Instance): Api {
-  const malloc = function (size: number): number {
-    return instance.exports.malloc(size)
-  }
-  const free = function (pointer: number): void {
-    instance.exports.free(pointer)
-  }
   const makeMatrix = function (qrcode: number): Matrix {
     const size = instance.exports.qrcodegen_getSize(qrcode)
     const matrix: Matrix = Array.from({ length: size }, () => Array(size))
@@ -123,55 +118,52 @@ function createApi (instance: Instance): Api {
     return matrix
   }
   const encodeText = function (text: string, ecc: Ecc = Ecc.LOW): Matrix {
-    const buffer = new TextEncoder().encode(text)
-    const pointer = malloc(buffer.byteLength + 1)
-    const memory = new Uint8Array(instance.exports.memory.buffer)
-    memory.set(buffer, pointer)
-    memory[pointer + buffer.byteLength] = 0
-    const max = BUFFER_LEN_FOR_VERSION(40)
-    const qrcode = malloc(max)
-    const tempBuffer = malloc(max)
-    const ok = instance.exports.qrcodegen_encodeText(
-      pointer, tempBuffer, qrcode, ecc, 1, 40, -1, 1
-    )
-    free(tempBuffer)
-    free(pointer)
-    let matrix: Matrix
-    if (ok) {
-      matrix = makeMatrix(qrcode)
-      free(qrcode)
-    } else {
-      free(qrcode)
-      throw new Error('encoding failed')
-    }
-    return matrix
+    return Scope.run(instance, (scope) => {
+      const buffer = new TextEncoder().encode(text)
+      const pointer = scope.malloc(buffer.byteLength + 1)
+      const memory = new Uint8Array(instance.exports.memory.buffer)
+      memory.set(buffer, pointer)
+      memory[pointer + buffer.byteLength] = 0
+      const max = BUFFER_LEN_FOR_VERSION(40)
+      const qrcode = scope.malloc(max)
+      const tempBuffer = scope.malloc(max)
+      const ok = instance.exports.qrcodegen_encodeText(
+        pointer, tempBuffer, qrcode, ecc, 1, 40, -1, 1
+      )
+      let matrix: Matrix
+      if (ok) {
+        matrix = makeMatrix(qrcode)
+      } else {
+        throw new Error('encoding failed')
+      }
+      return matrix
+    })
   }
 
   const encodeBinary = function (binary: BufferSource, ecc: Ecc = Ecc.LOW): Matrix {
-    const buffer = binary instanceof ArrayBuffer
-      ? new Uint8Array(binary)
-      : new Uint8Array(binary.buffer, binary.byteOffset, binary.byteLength)
-    const memory = new Uint8Array(instance.exports.memory.buffer)
-    const max = BUFFER_LEN_FOR_VERSION(40)
-    if (buffer.byteLength > max) {
-      throw new Error('data is too big')
-    }
-    const qrcode = malloc(max)
-    const tempBuffer = malloc(max)
-    memory.set(buffer, tempBuffer)
-    const ok = instance.exports.qrcodegen_encodeBinary(
-      tempBuffer, buffer.byteLength, qrcode, ecc, 1, 40, -1, 1
-    )
-    free(tempBuffer)
-    let matrix: Matrix
-    if (ok) {
-      matrix = makeMatrix(qrcode)
-      free(qrcode)
-    } else {
-      free(qrcode)
-      throw new Error('encoding failed')
-    }
-    return matrix
+    return Scope.run(instance, (scope) => {
+      const buffer = binary instanceof ArrayBuffer
+        ? new Uint8Array(binary)
+        : new Uint8Array(binary.buffer, binary.byteOffset, binary.byteLength)
+      const memory = new Uint8Array(instance.exports.memory.buffer)
+      const max = BUFFER_LEN_FOR_VERSION(40)
+      if (buffer.byteLength > max) {
+        throw new Error('data is too big')
+      }
+      const qrcode = scope.malloc(max)
+      const tempBuffer = scope.malloc(max)
+      memory.set(buffer, tempBuffer)
+      const ok = instance.exports.qrcodegen_encodeBinary(
+        tempBuffer, buffer.byteLength, qrcode, ecc, 1, 40, -1, 1
+      )
+      let matrix: Matrix
+      if (ok) {
+        matrix = makeMatrix(qrcode)
+      } else {
+        throw new Error('encoding failed')
+      }
+      return matrix
+    })
   }
 
   return {

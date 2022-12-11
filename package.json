@@ -1,6 +1,6 @@
 {
   "name": "@tybys/qrcodegen",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "miniprogram": "miniprogram_dist",
   "main": "./lib/cjs/index.js",
