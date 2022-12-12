@@ -287,9 +287,9 @@ export function drawCanvas (canvas: CanvasLike, matrix: Matrix, options?: DrawOp
         } else {
           if (startX !== -1) {
             ctx.fillRect(
-              Math.floor(padding + startX * deltaWidth),
+              padding + startX * deltaWidth,
               Math.floor(padding + y * deltaHeight),
-              Math.ceil(deltaWidth * (endX - startX)),
+              deltaWidth * (endX - startX),
               Math.ceil(deltaHeight)
             )
             startX = -1
@@ -299,9 +299,9 @@ export function drawCanvas (canvas: CanvasLike, matrix: Matrix, options?: DrawOp
       }
       if (startX !== -1) {
         ctx.fillRect(
-          Math.floor(padding + startX * deltaWidth),
+          padding + startX * deltaWidth,
           Math.floor(padding + y * deltaHeight),
-          Math.ceil(deltaWidth * (endX - startX)),
+          deltaWidth * (endX - startX),
           Math.ceil(deltaHeight)
         )
         startX = -1
