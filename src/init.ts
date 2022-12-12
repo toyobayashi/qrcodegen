@@ -106,6 +106,58 @@ export enum Ecc {
   HIGH
 }
 
+function lengthBytesUTF8 (str: string): number {
+  let len = 0
+  for (let i = 0; i < str.length; ++i) {
+    const c = str.charCodeAt(i)
+    if (c <= 127) {
+      len++
+    } else if (c <= 2047) {
+      len += 2
+    } else if (c >= 55296 && c <= 57343) {
+      len += 4
+      ++i
+    } else {
+      len += 3
+    }
+  }
+  return len
+}
+
+function stringToUTF8Array (str: string, heap: Uint8Array, outIdx: number, maxBytesToWrite: number): number {
+  if (!(maxBytesToWrite > 0)) return 0
+  const startIdx = outIdx
+  const endIdx = outIdx + maxBytesToWrite - 1
+  for (let i = 0; i < str.length; ++i) {
+    let u = str.charCodeAt(i)
+    if (u >= 55296 && u <= 57343) {
+      const u1 = str.charCodeAt(++i)
+      u = 65536 + ((u & 1023) << 10) | u1 & 1023
+    }
+    if (u <= 127) {
+      if (outIdx >= endIdx) break
+      heap[outIdx++] = u
+    } else if (u <= 2047) {
+      if (outIdx + 1 >= endIdx) break
+      heap[outIdx++] = 192 | u >> 6
+      heap[outIdx++] = 128 | u & 63
+    } else if (u <= 65535) {
+      if (outIdx + 2 >= endIdx) break
+      heap[outIdx++] = 224 | u >> 12
+      heap[outIdx++] = 128 | u >> 6 & 63
+      heap[outIdx++] = 128 | u & 63
+    } else {
+      if (outIdx + 3 >= endIdx) break
+      heap[outIdx++] = 240 | u >> 18
+      heap[outIdx++] = 128 | u >> 12 & 63
+      heap[outIdx++] = 128 | u >> 6 & 63
+      heap[outIdx++] = 128 | u & 63
+    }
+  }
+  heap[outIdx] = 0
+  return outIdx - startIdx
+}
+
 function createApi (instance: Instance): Api {
   const makeMatrix = function (qrcode: number): Matrix {
     const size = instance.exports.qrcodegen_getSize(qrcode)
@@ -119,11 +171,18 @@ function createApi (instance: Instance): Api {
   }
   const encodeText = function (text: string, ecc: Ecc = Ecc.LOW): Matrix {
     return Scope.run(instance, (scope) => {
-      const buffer = new TextEncoder().encode(text)
-      const pointer = scope.malloc(buffer.byteLength + 1)
       const memory = new Uint8Array(instance.exports.memory.buffer)
-      memory.set(buffer, pointer)
-      memory[pointer + buffer.byteLength] = 0
+      let pointer: number
+      if (typeof TextEncoder === 'function') {
+        const buffer = new TextEncoder().encode(text)
+        pointer = scope.malloc(buffer.byteLength + 1)
+        memory.set(buffer, pointer)
+        memory[pointer + buffer.byteLength] = 0
+      } else {
+        const size = lengthBytesUTF8(text) + 1
+        pointer = scope.malloc(size)
+        stringToUTF8Array(text, memory, pointer, size)
+      }
       const max = BUFFER_LEN_FOR_VERSION(40)
       const qrcode = scope.malloc(max)
       const tempBuffer = scope.malloc(max)
