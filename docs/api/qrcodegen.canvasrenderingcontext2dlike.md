@@ -22,4 +22,6 @@ export interface CanvasRenderingContext2DLike
 |  Method | Description |
 |  --- | --- |
 |  [fillRect(x, y, w, h)](./qrcodegen.canvasrenderingcontext2dlike.fillrect.md) |  |
+|  [restore()](./qrcodegen.canvasrenderingcontext2dlike.restore.md) |  |
+|  [save()](./qrcodegen.canvasrenderingcontext2dlike.save.md) |  |
 

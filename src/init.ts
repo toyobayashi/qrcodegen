@@ -242,6 +242,8 @@ export interface DrawOptions {
 export interface CanvasRenderingContext2DLike {
   fillStyle: string
   fillRect (x: number, y: number, w: number, h: number): void
+  save (): void
+  restore (): void
 }
 
 /** @public */
@@ -259,19 +261,56 @@ export function drawCanvas (canvas: CanvasLike, matrix: Matrix, options?: DrawOp
   const ctx = canvas.getContext('2d')
   options = options ?? {}
   const padding = options.padding ?? 0
-  ctx.fillStyle = options.backgroundColor ?? '#ffffff'
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+  ctx.save()
+  try {
+    ctx.fillStyle = options.backgroundColor ?? '#ffffff'
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight)
 
-  const deltaWidth = ((canvasWidth - 2 * padding) / size)
-  const deltaHeight = ((canvasHeight - 2 * padding) / size)
+    const deltaWidth = ((canvasWidth - 2 * padding) / size)
+    const deltaHeight = ((canvasHeight - 2 * padding) / size)
 
-  for (let y = 0; y < size; ++y) {
-    for (let x = 0; x < size; ++x) {
-      const isDark = matrix[y][x]
-      if (isDark) {
-        ctx.fillStyle = options.foregroundColor ?? '#000000'
-        ctx.fillRect(padding + x * deltaWidth, padding + y * deltaHeight, deltaWidth, deltaHeight)
+    let startX = -1
+    let endX = -1
+
+    ctx.fillStyle = options.foregroundColor ?? '#000000'
+    for (let y = 0; y < size; ++y) {
+      let x = 0
+      for (; x < size; ++x) {
+        const isDark = matrix[y][x]
+        if (isDark) {
+          if (startX !== -1) {
+            endX = x + 1
+          } else {
+            startX = x
+            endX = x + 1
+          }
+        } else {
+          if (startX !== -1) {
+            ctx.fillRect(
+              Math.floor(padding + startX * deltaWidth),
+              Math.floor(padding + y * deltaHeight),
+              Math.ceil(deltaWidth * (endX - startX)),
+              Math.ceil(deltaHeight)
+            )
+            startX = -1
+            endX = -1
+          }
+        }
+      }
+      if (startX !== -1) {
+        ctx.fillRect(
+          Math.floor(padding + startX * deltaWidth),
+          Math.floor(padding + y * deltaHeight),
+          Math.ceil(deltaWidth * (endX - startX)),
+          Math.ceil(deltaHeight)
+        )
+        startX = -1
+        endX = -1
       }
     }
+  } catch (err) {
+    ctx.restore()
+    throw err
   }
+  ctx.restore()
 }

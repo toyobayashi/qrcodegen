@@ -1,6 +1,6 @@
 {
   "name": "@tybys/qrcodegen",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "",
   "miniprogram": "miniprogram_dist",
   "main": "./lib/cjs/index.js",
@@ -27,6 +27,7 @@
   "publishConfig": {
     "access": "public"
   },
+  "sideEffects": false,
   "license": "MIT",
   "devDependencies": {
     "@tybys/ts-transform-module-specifier": "^0.0.2",
